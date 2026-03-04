@@ -94,9 +94,18 @@ export function applySettingsFromUrl(host: SettingsHost) {
   }
   const url = new URL(window.location.href);
   const params = new URLSearchParams(url.search);
-  const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
+  const rawHash = url.hash.startsWith("#") ? url.hash.slice(1) : url.hash;
+  const normalizedHash = rawHash.startsWith("/") ? rawHash.slice(1) : rawHash;
+  const hashParams = new URLSearchParams(normalizedHash);
 
-  const tokenRaw = params.get("token") ?? hashParams.get("token");
+  const bareHashToken =
+    normalizedHash && !normalizedHash.includes("=") ? normalizedHash.trim() : null;
+  const urlTokenRaw = params.get("token") ?? hashParams.get("token") ?? bareHashToken;
+  const envToken =
+    typeof import.meta.env.VITE_GATEWAY_TOKEN === "string"
+      ? import.meta.env.VITE_GATEWAY_TOKEN.trim()
+      : "";
+  const tokenRaw = urlTokenRaw ?? (envToken && !host.settings.token.trim() ? envToken : null);
   const passwordRaw = params.get("password") ?? hashParams.get("password");
   const sessionRaw = params.get("session") ?? hashParams.get("session");
   const gatewayUrlRaw = params.get("gatewayUrl") ?? hashParams.get("gatewayUrl");
@@ -107,9 +116,14 @@ export function applySettingsFromUrl(host: SettingsHost) {
     if (token && token !== host.settings.token) {
       applySettings(host, { ...host.settings, token });
     }
-    params.delete("token");
-    hashParams.delete("token");
-    shouldCleanUrl = true;
+    if (token) {
+      host.isAuthenticated = true;
+    }
+    if (urlTokenRaw != null) {
+      params.delete("token");
+      hashParams.delete("token");
+      shouldCleanUrl = true;
+    }
   }
 
   if (passwordRaw != null) {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { setTabFromRoute } from "./app-settings.ts";
+import { applySettingsFromUrl, setTabFromRoute } from "./app-settings.ts";
 import type { Tab } from "./navigation.ts";
 
 type SettingsHost = Parameters<typeof setTabFromRoute>[0] & {
@@ -66,5 +66,43 @@ describe("setTabFromRoute", () => {
 
     setTabFromRoute(host, "chat");
     expect(host.debugPollInterval).toBeNull();
+  });
+});
+
+describe("applySettingsFromUrl", () => {
+  it("hydrates token from hash and marks host authenticated", () => {
+    const host = createHost("login");
+    host.isAuthenticated = false;
+
+    window.history.replaceState({}, "", "http://localhost/#token=abc123");
+    applySettingsFromUrl(host);
+
+    expect(host.settings.token).toBe("abc123");
+    expect(host.isAuthenticated).toBe(true);
+    expect(window.location.hash).toBe("");
+  });
+
+  it("supports slash-prefixed hash params", () => {
+    const host = createHost("login");
+    host.isAuthenticated = false;
+
+    window.history.replaceState({}, "", "http://localhost/#/token=xyz789");
+    applySettingsFromUrl(host);
+
+    expect(host.settings.token).toBe("xyz789");
+    expect(host.isAuthenticated).toBe(true);
+    expect(window.location.hash).toBe("");
+  });
+
+  it("supports bare hash token redirects", () => {
+    const host = createHost("login");
+    host.isAuthenticated = false;
+
+    window.history.replaceState({}, "", "http://localhost/#xyz987");
+    applySettingsFromUrl(host);
+
+    expect(host.settings.token).toBe("xyz987");
+    expect(host.isAuthenticated).toBe(true);
+    expect(window.location.hash).toBe("");
   });
 });

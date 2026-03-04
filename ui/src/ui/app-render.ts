@@ -120,6 +120,10 @@ const CRON_TIMEZONE_SUGGESTIONS = [
   "Asia/Tokyo",
 ];
 const AUTH_FLOW_STORAGE_KEY = "openclaw.control.auth.flow.v1";
+const ENV_GATEWAY_TOKEN =
+  typeof import.meta.env.VITE_GATEWAY_TOKEN === "string"
+    ? import.meta.env.VITE_GATEWAY_TOKEN.trim()
+    : "";
 
 type AuthFlowState = {
   email: string;
@@ -408,8 +412,10 @@ export function renderApp(state: AppViewState) {
                           saveAuthFlowState({ email });
                           state.isAuthenticated = true;
                           state.sessionKey = "main";
+                          const gatewayToken = state.settings.token.trim() || ENV_GATEWAY_TOKEN;
                           state.applySettings({
                             ...state.settings,
+                            token: gatewayToken,
                             sessionKey: "main",
                             lastActiveSessionKey: "main",
                           });
