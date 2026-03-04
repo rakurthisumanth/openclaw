@@ -40,6 +40,7 @@ export type AppViewState = {
   tab: Tab;
   onboarding: boolean;
   basePath: string;
+  isAuthenticated: boolean;
   connected: boolean;
   theme: ThemeMode;
   themeResolved: "light" | "dark";

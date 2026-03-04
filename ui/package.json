@@ -9,9 +9,11 @@
     "test": "vitest run --config vitest.config.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.1000.0",
     "@lit-labs/signals": "^0.2.0",
     "@lit/context": "^1.1.6",
     "@noble/ed25519": "3.0.0",
+    "axios": "^1.13.6",
     "dompurify": "^3.3.1",
     "lit": "^3.3.2",
     "marked": "^17.0.3",

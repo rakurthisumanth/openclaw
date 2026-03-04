@@ -359,3 +359,331 @@ export function renderOverview(props: OverviewProps) {
     </section>
   `;
 }
+
+export type LoginProps = {
+  lastError: string | null;
+  onLogin: (email: string, password: string) => void;
+  onNavigateSignup: () => void;
+  onNavigateForgotPassword: () => void;
+};
+
+export function renderLogin(props: LoginProps) {
+  return html`
+    <section class="auth-page">
+      <div class="card auth-card">
+        <div class="card-title auth-title">Login</div>
+        <div class="card-sub">Welcome back. Please sign in to continue.</div>
+        <form
+          class="auth-form"
+          @submit=${(event: Event) => {
+            event.preventDefault();
+            const form = event.currentTarget as HTMLFormElement;
+            const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
+            const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
+            if (!emailInput || !passwordInput) {
+              return;
+            }
+            props.onLogin(emailInput.value.trim(), passwordInput.value);
+          }}
+        >
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" required placeholder="you@example.com" />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input name="password" type="password" required minlength="8" placeholder="Enter password" />
+          </label>
+          <button class="btn primary auth-submit" type="submit">Login</button>
+        </form>
+        ${
+          props.lastError
+            ? html`<div class="callout danger auth-error">${props.lastError}</div>`
+            : ""
+        }
+        <div class="auth-switch">
+          <button class="auth-link-btn" type="button" @click=${props.onNavigateForgotPassword}>
+            Forgot password?
+          </button>
+        </div>
+        <div class="auth-switch">
+          <span class="muted">Don't have an account?</span>
+          <button class="auth-link-btn" type="button" @click=${props.onNavigateSignup}>Sign Up</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+export type SignupProps = {
+  lastError: string | null;
+  onSignup: (params: { email: string; password: string }) => Promise<void> | void;
+  onNavigateLogin: () => void;
+};
+
+export function renderSignup(props: SignupProps) {
+  return html`
+    <section class="auth-page">
+      <div class="card auth-card">
+        <div class="card-title auth-title">Sign Up</div>
+        <div class="card-sub">Create your account.</div>
+        <form
+          class="auth-form"
+          @submit=${(event: Event) => {
+            event.preventDefault();
+            const form = event.currentTarget as HTMLFormElement;
+            const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
+            const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
+            const confirmInput = form.elements.namedItem("confirmPassword") as HTMLInputElement | null;
+            if (!emailInput || !passwordInput || !confirmInput) {
+              return;
+            }
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+            const confirmPassword = confirmInput.value;
+            if (!email || !password) {
+              return;
+            }
+            if (password !== confirmPassword) {
+              confirmInput.setCustomValidity("Passwords do not match.");
+              confirmInput.reportValidity();
+              return;
+            }
+            confirmInput.setCustomValidity("");
+            void props.onSignup({ email, password });
+          }}
+        >
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" required placeholder="you@example.com" />
+          </label>
+          <label class="field">
+            <span>Password</span>
+            <input name="password" type="password" required minlength="8" placeholder="Create password" />
+          </label>
+          <label class="field">
+            <span>Confirm Password</span>
+            <input
+              name="confirmPassword"
+              type="password"
+              required
+              minlength="8"
+              @input=${(event: Event) => {
+                (event.currentTarget as HTMLInputElement).setCustomValidity("");
+              }}
+              placeholder="Confirm password"
+            />
+          </label>
+          <button class="btn primary auth-submit" type="submit">Create Account</button>
+        </form>
+        ${
+          props.lastError
+            ? html`<div class="callout danger auth-error">${props.lastError}</div>`
+            : ""
+        }
+        <div class="auth-switch">
+          <span class="muted">Already have an account?</span>
+          <button class="auth-link-btn" type="button" @click=${props.onNavigateLogin}>Login</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+export type VerifyOtpProps = {
+  email: string;
+  lastError: string | null;
+  onVerify: (params: { email: string; code: string }) => Promise<void> | void;
+  onResend: (email: string) => Promise<void> | void;
+  onNavigateLogin: () => void;
+};
+
+export function renderVerifyOtp(props: VerifyOtpProps) {
+  return html`
+    <section class="auth-page">
+      <div class="card auth-card">
+        <div class="card-title auth-title">Verify OTP</div>
+        <div class="card-sub">Enter the OTP code sent to your email.</div>
+        <form
+          class="auth-form"
+          @submit=${(event: Event) => {
+            event.preventDefault();
+            const form = event.currentTarget as HTMLFormElement;
+            const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
+            const codeInput = form.elements.namedItem("code") as HTMLInputElement | null;
+            if (!emailInput || !codeInput) {
+              return;
+            }
+            void props.onVerify({
+              email: emailInput.value.trim(),
+              code: codeInput.value.trim(),
+            });
+          }}
+        >
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" required .value=${props.email} placeholder="you@example.com" />
+          </label>
+          <label class="field">
+            <span>OTP Code</span>
+            <input name="code" required minlength="4" maxlength="8" placeholder="Enter OTP code" />
+          </label>
+          <button class="btn primary auth-submit" type="submit">Verify</button>
+        </form>
+        ${
+          props.lastError
+            ? html`<div class="callout danger auth-error">${props.lastError}</div>`
+            : ""
+        }
+        <div class="auth-switch">
+          <button
+            class="auth-link-btn"
+            type="button"
+            @click=${() => {
+              if (!props.email.trim()) {
+                return;
+              }
+              void props.onResend(props.email.trim());
+            }}
+          >
+            Resend OTP
+          </button>
+          <span class="muted">|</span>
+          <button class="auth-link-btn" type="button" @click=${props.onNavigateLogin}>Back to Login</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+export type ForgotPasswordProps = {
+  email: string;
+  lastError: string | null;
+  onRequestReset: (email: string) => Promise<void> | void;
+  onNavigateLogin: () => void;
+};
+
+export function renderForgotPassword(props: ForgotPasswordProps) {
+  return html`
+    <section class="auth-page">
+      <div class="card auth-card">
+        <div class="card-title auth-title">Forgot Password</div>
+        <div class="card-sub">Request an OTP to reset your password.</div>
+        <form
+          class="auth-form"
+          @submit=${(event: Event) => {
+            event.preventDefault();
+            const form = event.currentTarget as HTMLFormElement;
+            const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
+            if (!emailInput) {
+              return;
+            }
+            void props.onRequestReset(emailInput.value.trim());
+          }}
+        >
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" required .value=${props.email} placeholder="you@example.com" />
+          </label>
+          <button class="btn primary auth-submit" type="submit">Send OTP</button>
+        </form>
+        ${
+          props.lastError
+            ? html`<div class="callout danger auth-error">${props.lastError}</div>`
+            : ""
+        }
+        <div class="auth-switch">
+          <button class="auth-link-btn" type="button" @click=${props.onNavigateLogin}>Back to Login</button>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+export type ResetPasswordProps = {
+  email: string;
+  lastError: string | null;
+  onResetPassword: (params: { email: string; code: string; password: string }) => Promise<void> | void;
+  onNavigateLogin: () => void;
+};
+
+export function renderResetPassword(props: ResetPasswordProps) {
+  return html`
+    <section class="auth-page">
+      <div class="card auth-card">
+        <div class="card-title auth-title">Reset Password</div>
+        <div class="card-sub">Enter OTP and set your new password.</div>
+        <form
+          class="auth-form"
+          @submit=${(event: Event) => {
+            event.preventDefault();
+            const form = event.currentTarget as HTMLFormElement;
+            const emailInput = form.elements.namedItem("email") as HTMLInputElement | null;
+            const codeInput = form.elements.namedItem("code") as HTMLInputElement | null;
+            const passwordInput = form.elements.namedItem("password") as HTMLInputElement | null;
+            const confirmInput = form.elements.namedItem("confirmPassword") as HTMLInputElement | null;
+            if (!emailInput || !codeInput || !passwordInput || !confirmInput) {
+              return;
+            }
+            const password = passwordInput.value;
+            const confirmPassword = confirmInput.value;
+            if (password !== confirmPassword) {
+              confirmInput.setCustomValidity("Passwords do not match.");
+              confirmInput.reportValidity();
+              return;
+            }
+            confirmInput.setCustomValidity("");
+            void props.onResetPassword({
+              email: emailInput.value.trim(),
+              code: codeInput.value.trim(),
+              password,
+            });
+          }}
+        >
+          <label class="field">
+            <span>Email</span>
+            <input name="email" type="email" required .value=${props.email} placeholder="you@example.com" />
+          </label>
+          <label class="field">
+            <span>OTP Code</span>
+            <input name="code" required minlength="4" maxlength="8" placeholder="Enter OTP code" />
+          </label>
+          <label class="field">
+            <span>New Password</span>
+            <input
+              name="password"
+              type="password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+              placeholder="Enter new password"
+            />
+          </label>
+          <label class="field">
+            <span>Confirm Password</span>
+            <input
+              name="confirmPassword"
+              type="password"
+              required
+              minlength="8"
+              autocomplete="new-password"
+              @input=${(event: Event) => {
+                (event.currentTarget as HTMLInputElement).setCustomValidity("");
+              }}
+              placeholder="Confirm new password"
+            />
+          </label>
+          <button class="btn primary auth-submit" type="submit">Update Password</button>
+        </form>
+        ${
+          props.lastError
+            ? html`<div class="callout danger auth-error">${props.lastError}</div>`
+            : ""
+        }
+        <div class="auth-switch">
+          <button class="auth-link-btn" type="button" @click=${props.onNavigateLogin}>Back to Login</button>
+        </div>
+      </div>
+    </section>
+  `;
+}

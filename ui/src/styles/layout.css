@@ -60,6 +60,20 @@
   padding-top: 0;
 }
 
+.shell--auth {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "topbar"
+    "content";
+}
+
+.shell--auth .content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+}
+
 .shell--chat-focus .content {
   padding-top: 0;
 }

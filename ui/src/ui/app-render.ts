@@ -65,7 +65,24 @@ import {
 } from "./controllers/skills.ts";
 import { buildExternalLinkRel, EXTERNAL_LINK_TARGET } from "./external-link.ts";
 import { icons } from "./icons.ts";
-import { normalizeBasePath, TAB_GROUPS, subtitleForTab, titleForTab } from "./navigation.ts";
+import {
+  login as cognitoLogin,
+  logout as cognitoLogout,
+  mapAuthError,
+  requestForgotPasswordOtp,
+  resendSignUpOtp,
+  resetPasswordWithOtp,
+  signUp,
+  verifySignUpOtp,
+} from "./auth/auth-service.ts";
+import { clearStoredTokens } from "./auth/token-store.ts";
+import {
+  isAuthTab,
+  normalizeBasePath,
+  TAB_GROUPS,
+  subtitleForTab,
+  titleForTab,
+} from "./navigation.ts";
 import { resolveConfiguredCronModelSuggestions, sortLocaleStrings } from "./views/agents-utils.ts";
 import { renderAgents } from "./views/agents.ts";
 import { renderChannels } from "./views/channels.ts";
@@ -78,7 +95,14 @@ import { renderGatewayUrlConfirmation } from "./views/gateway-url-confirmation.t
 import { renderInstances } from "./views/instances.ts";
 import { renderLogs } from "./views/logs.ts";
 import { renderNodes } from "./views/nodes.ts";
-import { renderOverview } from "./views/overview.ts";
+import {
+  renderForgotPassword,
+  renderLogin,
+  renderOverview,
+  renderResetPassword,
+  renderSignup,
+  renderVerifyOtp,
+} from "./views/overview.ts";
 import { renderSessions } from "./views/sessions.ts";
 import { renderSkills } from "./views/skills.ts";
 
@@ -95,6 +119,34 @@ const CRON_TIMEZONE_SUGGESTIONS = [
   "Europe/Berlin",
   "Asia/Tokyo",
 ];
+const AUTH_FLOW_STORAGE_KEY = "openclaw.control.auth.flow.v1";
+
+type AuthFlowState = {
+  email: string;
+};
+
+function loadAuthFlowState(): AuthFlowState {
+  try {
+    const raw = localStorage.getItem(AUTH_FLOW_STORAGE_KEY);
+    if (!raw) {
+      return { email: "" };
+    }
+    const parsed = JSON.parse(raw) as Partial<AuthFlowState>;
+    return {
+      email: typeof parsed.email === "string" ? parsed.email : "",
+    };
+  } catch {
+    return { email: "" };
+  }
+}
+
+function saveAuthFlowState(state: AuthFlowState) {
+  try {
+    localStorage.setItem(AUTH_FLOW_STORAGE_KEY, JSON.stringify(state));
+  } catch {
+    // Ignore storage errors.
+  }
+}
 
 function isHttpUrl(value: string): boolean {
   return /^https?:\/\//i.test(value.trim());
@@ -219,6 +271,157 @@ export function renderApp(state: AppViewState) {
     state.cronForm.deliveryMode === "webhook"
       ? rawDeliveryToSuggestions.filter((value) => isHttpUrl(value))
       : rawDeliveryToSuggestions;
+  const authFlow = loadAuthFlowState();
+  const showAuthShell = !state.isAuthenticated;
+  const authTab =
+    state.tab === "signup" ||
+    state.tab === "verify-otp" ||
+    state.tab === "forgot-password" ||
+    state.tab === "reset-password"
+      ? state.tab
+      : "login";
+  const visibleTabGroups = showAuthShell
+    ? []
+    : TAB_GROUPS.map((group) =>
+        group.label === "chat"
+          ? { ...group, tabs: group.tabs.filter((tab) => !isAuthTab(tab)) }
+          : group,
+      );
+
+  if (showAuthShell) {
+    return html`
+      <div class="shell shell--chat-focus shell--auth">
+        <header class="topbar">
+          <div class="topbar-left">
+            <div class="brand">
+              <div class="brand-logo">
+                <img src=${basePath ? `${basePath}/favicon.svg` : "/favicon.svg"} alt="OpenClaw" />
+              </div>
+              <div class="brand-text">
+                <div class="brand-title">OPENCLAW</div>
+                <div class="brand-sub">Gateway Dashboard</div>
+              </div>
+            </div>
+          </div>
+          <div class="topbar-status">${renderThemeToggle(state)}</div>
+        </header>
+        <main class="content">
+          ${
+            authTab === "signup"
+              ? renderSignup({
+                  lastError: state.lastError,
+                  onSignup: async ({ email, password }) => {
+                    state.lastError = null;
+                    state.lastErrorCode = null;
+                    try {
+                      await signUp(email, password);
+                      saveAuthFlowState({ email });
+                      state.setTab("verify-otp");
+                    } catch (error) {
+                      state.lastError = mapAuthError(error);
+                    }
+                  },
+                  onNavigateLogin: () => state.setTab("login"),
+                })
+              : authTab === "verify-otp"
+                ? renderVerifyOtp({
+                    email: authFlow.email,
+                    lastError: state.lastError,
+                    onVerify: async ({ email, code }) => {
+                      state.lastError = null;
+                      state.lastErrorCode = null;
+                      try {
+                        await verifySignUpOtp(email, code);
+                        saveAuthFlowState({ email });
+                        state.setTab("login");
+                      } catch (error) {
+                        state.lastError = mapAuthError(error);
+                      }
+                    },
+                    onResend: async (email) => {
+                      state.lastError = null;
+                      state.lastErrorCode = null;
+                      try {
+                        await resendSignUpOtp(email);
+                      } catch (error) {
+                        state.lastError = mapAuthError(error);
+                      }
+                    },
+                    onNavigateLogin: () => state.setTab("login"),
+                  })
+                : authTab === "forgot-password"
+                  ? renderForgotPassword({
+                      email: authFlow.email,
+                      lastError: state.lastError,
+                      onRequestReset: async (email) => {
+                        state.lastError = null;
+                        state.lastErrorCode = null;
+                        try {
+                          await requestForgotPasswordOtp(email);
+                          saveAuthFlowState({ email });
+                          state.setTab("reset-password");
+                        } catch (error) {
+                          state.lastError = mapAuthError(error);
+                        }
+                      },
+                      onNavigateLogin: () => state.setTab("login"),
+                    })
+                  : authTab === "reset-password"
+                    ? renderResetPassword({
+                        email: authFlow.email,
+                        lastError: state.lastError,
+                        onResetPassword: async ({ email, code, password }) => {
+                          state.lastError = null;
+                          state.lastErrorCode = null;
+                          try {
+                            await resetPasswordWithOtp(email, code, password);
+                            saveAuthFlowState({ email });
+                            state.setTab("login");
+                          } catch (error) {
+                            state.lastError = mapAuthError(error);
+                          }
+                        },
+                        onNavigateLogin: () => state.setTab("login"),
+                      })
+                    : renderLogin({
+                        lastError: state.lastError,
+                        onNavigateSignup: () => state.setTab("signup"),
+                        onNavigateForgotPassword: () => state.setTab("forgot-password"),
+                        onLogin: async (email, password) => {
+                          state.lastError = null;
+                          state.lastErrorCode = null;
+                          try {
+                            await cognitoLogin(email, password, true);
+                          } catch (error) {
+                            state.lastError = mapAuthError(error);
+                            if (
+                              typeof error === "object" &&
+                              error != null &&
+                              "name" in error &&
+                              String(error.name) === "UserNotConfirmedException"
+                            ) {
+                              saveAuthFlowState({ email });
+                              state.setTab("verify-otp");
+                            }
+                            return;
+                          }
+                          saveAuthFlowState({ email });
+                          state.isAuthenticated = true;
+                          state.sessionKey = "main";
+                          state.applySettings({
+                            ...state.settings,
+                            sessionKey: "main",
+                            lastActiveSessionKey: "main",
+                          });
+                          state.setTab("chat");
+                          state.connect();
+                        },
+                      })
+          }
+        </main>
+      </div>
+    `;
+  }
 
   return html`
     <div class="shell ${isChat ? "shell--chat" : ""} ${chatFocus ? "shell--chat-focus" : ""} ${state.settings.navCollapsed ? "shell--nav-collapsed" : ""} ${state.onboarding ? "shell--onboarding" : ""}">
@@ -257,11 +460,32 @@ export function renderApp(state: AppViewState) {
             <span>${t("common.health")}</span>
             <span class="mono">${state.connected ? t("common.ok") : t("common.offline")}</span>
           </div>
+          <button
+            class="btn btn--sm"
+            @click=${async () => {
+              try {
+                await cognitoLogout();
+              } catch {
+                // Ignore network signout issues.
+              }
+              clearStoredTokens();
+              state.isAuthenticated = false;
+              state.lastError = null;
+              state.lastErrorCode = null;
+              state.connected = false;
+              state.hello = null;
+              state.client?.stop();
+              state.client = null;
+              state.setTab("login");
+            }}
+          >
+            Logout
+          </button>
           ${renderThemeToggle(state)}
         </div>
       </header>
       <aside class="nav ${state.settings.navCollapsed ? "nav--collapsed" : ""}">
-        ${TAB_GROUPS.map((group) => {
+        ${visibleTabGroups.map((group) => {
           const isGroupCollapsed = state.settings.navGroupsCollapsed[group.label] ?? false;
           const hasActiveTab = group.tabs.some((tab) => tab === state.tab);
           return html`

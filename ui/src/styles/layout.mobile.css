@@ -132,6 +132,11 @@
     gap: 12px;
   }
 
+  .shell--auth .content {
+    align-items: flex-start;
+    padding-top: 20px;
+  }
+
   /* Cards */
   .card {
     padding: 12px;
@@ -185,6 +190,10 @@
   .btn {
     padding: 8px 12px;
     font-size: 12px;
+  }
+
+  .auth-card {
+    padding: 18px;
   }
 
   /* Pills */

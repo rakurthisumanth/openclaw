@@ -8,6 +8,7 @@ import {
   applySettings,
   loadCron,
   refreshActiveTab,
+  setTab,
   setLastActiveSessionKey,
 } from "./app-settings.ts";
 import { handleAgentEvent, resetToolStream, type AgentEventPayload } from "./app-tool-stream.ts";
@@ -33,7 +34,7 @@ import {
   type GatewayHelloOk,
 } from "./gateway.ts";
 import { GatewayBrowserClient } from "./gateway.ts";
-import type { Tab } from "./navigation.ts";
+import { isAuthTab, type Tab } from "./navigation.ts";
 import type { UiSettings } from "./storage.ts";
 import type {
   AgentsListResult,
@@ -172,6 +173,11 @@ export function connectGateway(host: GatewayHost) {
       void loadToolsCatalog(host as unknown as OpenClawApp);
       void loadNodes(host as unknown as OpenClawApp, { quiet: true });
       void loadDevices(host as unknown as OpenClawApp, { quiet: true });
+      if (isAuthTab(host.tab)) {
+        host.sessionKey = "main";
+        setLastActiveSessionKey(host as unknown as Parameters<typeof setLastActiveSessionKey>[0], "main");
+        setTab(host as unknown as Parameters<typeof setTab>[0], "chat");
+      }
       void refreshActiveTab(host as unknown as Parameters<typeof refreshActiveTab>[0]);
     },
     onClose: ({ code, reason, error }) => {

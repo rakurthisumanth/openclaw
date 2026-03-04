@@ -2,7 +2,7 @@ import { t } from "../i18n/index.ts";
 import type { IconName } from "./icons.js";
 
 export const TAB_GROUPS = [
-  { label: "chat", tabs: ["chat"] },
+  { label: "chat", tabs: ["chat", "login", "signup", "verify-otp", "forgot-password", "reset-password"] },
   {
     label: "control",
     tabs: ["overview", "channels", "instances", "sessions", "usage", "cron"],
@@ -22,6 +22,11 @@ export type Tab =
   | "skills"
   | "nodes"
   | "chat"
+  | "login"
+  | "signup"
+  | "verify-otp"
+  | "forgot-password"
+  | "reset-password"
   | "config"
   | "debug"
   | "logs";
@@ -37,6 +42,11 @@ const TAB_PATHS: Record<Tab, string> = {
   skills: "/skills",
   nodes: "/nodes",
   chat: "/chat",
+  login: "/login",
+  signup: "/signup",
+  "verify-otp": "/verify-otp",
+  "forgot-password": "/forgot-password",
+  "reset-password": "/reset-password",
   config: "/config",
   debug: "/debug",
   logs: "/logs",
@@ -129,6 +139,16 @@ export function iconForTab(tab: Tab): IconName {
       return "folder";
     case "chat":
       return "messageSquare";
+    case "login":
+      return "settings";
+    case "signup":
+      return "folder";
+    case "verify-otp":
+      return "fileText";
+    case "forgot-password":
+      return "settings";
+    case "reset-password":
+      return "settings";
     case "overview":
       return "barChart";
     case "channels":
@@ -157,9 +177,49 @@ export function iconForTab(tab: Tab): IconName {
 }
 
 export function titleForTab(tab: Tab) {
+  if (tab === "login") {
+    return "Login";
+  }
+  if (tab === "signup") {
+    return "Sign Up";
+  }
+  if (tab === "verify-otp") {
+    return "Verify OTP";
+  }
+  if (tab === "forgot-password") {
+    return "Forgot Password";
+  }
+  if (tab === "reset-password") {
+    return "Reset Password";
+  }
   return t(`tabs.${tab}`);
 }
 
 export function subtitleForTab(tab: Tab) {
+  if (tab === "login") {
+    return "Connect to your gateway account.";
+  }
+  if (tab === "signup") {
+    return "Create credentials for dashboard access.";
+  }
+  if (tab === "verify-otp") {
+    return "Enter the one-time verification code sent to your email.";
+  }
+  if (tab === "forgot-password") {
+    return "Request a one-time password to reset your account password.";
+  }
+  if (tab === "reset-password") {
+    return "Set a new password with the one-time password you received.";
+  }
   return t(`subtitles.${tab}`);
+}
+
+export function isAuthTab(tab: Tab): boolean {
+  return (
+    tab === "login" ||
+    tab === "signup" ||
+    tab === "verify-otp" ||
+    tab === "forgot-password" ||
+    tab === "reset-password"
+  );
 }

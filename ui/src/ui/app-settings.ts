@@ -34,6 +34,7 @@ import {
   tabFromPath,
   type Tab,
 } from "./navigation.ts";
+import { resolveProtectedTab } from "./auth/protected-route.ts";
 import { saveSettings, type UiSettings } from "./storage.ts";
 import { startThemeTransition, type ThemeTransitionContext } from "./theme-transition.ts";
 import { resolveTheme, type ResolvedTheme, type ThemeMode } from "./theme.ts";
@@ -47,6 +48,7 @@ type SettingsHost = {
   applySessionKey: string;
   sessionKey: string;
   tab: Tab;
+  isAuthenticated?: boolean;
   connected: boolean;
   chatHasAutoScrolled: boolean;
   logsAtBottom: boolean;
@@ -305,7 +307,7 @@ export function syncTabWithLocation(host: SettingsHost, replace: boolean) {
   }
   const resolved = tabFromPath(window.location.pathname, host.basePath) ?? "chat";
   setTabFromRoute(host, resolved);
-  syncUrlWithTab(host, resolved, replace);
+  syncUrlWithTab(host, host.tab, replace);
 }
 
 export function onPopState(host: SettingsHost) {
@@ -340,18 +342,21 @@ function applyTabSelection(
   next: Tab,
   options: { refreshPolicy: "always" | "connected"; syncUrl?: boolean },
 ) {
-  if (host.tab !== next) {
-    host.tab = next;
+  const authenticated = Boolean(host.isAuthenticated);
+  const targetTab: Tab = resolveProtectedTab(next, authenticated);
+
+  if (host.tab !== targetTab) {
+    host.tab = targetTab;
   }
-  if (next === "chat") {
+  if (targetTab === "chat") {
     host.chatHasAutoScrolled = false;
   }
-  if (next === "logs") {
+  if (targetTab === "logs") {
     startLogsPolling(host as unknown as Parameters<typeof startLogsPolling>[0]);
   } else {
     stopLogsPolling(host as unknown as Parameters<typeof stopLogsPolling>[0]);
   }
-  if (next === "debug") {
+  if (targetTab === "debug") {
     startDebugPolling(host as unknown as Parameters<typeof startDebugPolling>[0]);
   } else {
     stopDebugPolling(host as unknown as Parameters<typeof stopDebugPolling>[0]);
@@ -362,7 +367,7 @@ function applyTabSelection(
   }
 
   if (options.syncUrl) {
-    syncUrlWithTab(host, next, false);
+    syncUrlWithTab(host, targetTab, false);
   }
 }
 

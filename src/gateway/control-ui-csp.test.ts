@@ -15,4 +15,9 @@ describe("buildControlUiCspHeader", () => {
     expect(csp).toContain("https://fonts.googleapis.com");
     expect(csp).toContain("font-src 'self' https://fonts.gstatic.com");
   });
+
+  it("allows HTTPS API calls for frontend auth", () => {
+    const csp = buildControlUiCspHeader();
+    expect(csp).toContain("connect-src 'self' ws: wss: https:");
+  });
 });
